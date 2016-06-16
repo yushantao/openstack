@@ -1,0 +1,87 @@
+---
+- name: install package
+  yum: name=openstack-glance enablerepo=openstack-{{ openstack_codename }}
+  tags: ['glance', 'rpm']
+
+- name: install glance-api.conf
+  template: src=glance-api.conf.tmpl dest=/etc/glance/glance-api.conf mode=0640 owner=root group=glance
+  tags: ['glance', 'config']
+  register: glance_api_config
+
+- name: install glance-cache.conf
+  template: src=glance-cache.conf.tmpl dest=/etc/glance/glance-cache.conf mode=0640 owner=root group=glance
+  tags: ['glance', 'config']
+  register: glance_cache_config
+
+- name: install glance-registry.conf
+  template: src=glance-registry.conf.tmpl dest=/etc/glance/glance-registry.conf mode=0640 owner=root group=glance
+  tags: ['glance', 'config']
+  register: glance_register_config
+
+- name: install glance-scrubber.conf
+  template: src=glance-scrubber.conf.tmpl dest=/etc/glance/glance-scrubber.conf mode=0640 owner=root group=glance
+  tags: ['glance', 'config']
+  register: glance_scrubber_config
+
+- name: make glance datadir
+  file: dest={{ glance_datadir }} state=directory mode=755 owner=glance group=glance
+  tags: ['glance', 'config']
+
+###############################################################################
+# Database configuration
+###############################################################################
+
+- name: create database
+  mysql_db: state=present name=glance login_user=root login_password={{ mysql_root_password }}
+  tags: ['glance', 'db']
+
+- name: create database user
+  mysql_user: state=present name=glance host='%' priv='glance.*:ALL' password={{ glance_mysql_password }} login_user=root login_password={{ mysql_root_password }}
+  tags: ['glance', 'db']
+
+- name: init database
+  command: glance-manage db sync
+  sudo: yes
+  sudo_user: glance
+  tags: ['glance', 'db']
+
+
+###############################################################################
+# auth configuration
+###############################################################################
+
+- name: create glance user on keystone
+  keystone_user: user=glance tenant=services password={{ glance_admin_password }} email="glance@localhost" token={{ keystone_admin_token }} state=present
+  tags: ['glance', 'keystone', 'user']
+
+- name: setup glance user on keystone
+  keystone_user: user=glance tenant=services role=admin token={{ keystone_admin_token }} state=present
+  tags: ['glance', 'keystone', 'user']
+
+- name: create glance service on keystone
+  keystone_service: token={{ keystone_admin_token }} name=glance type=image description="Glance Image Service" public_url="http://{{ openstack_auth_host }}:9292" internal_url="http://{{ openstack_auth_host }}:9292" admin_url="http://{{ openstack_auth_host }}:9292" region="{{ openstack_region }}" state=present
+  tags: ['glance', 'keystone', 'user']
+
+###############################################################################
+# Service configuration
+###############################################################################
+
+- name: ensure glance-api service started
+  service: name=openstack-glance-api state=started enabled=true
+  tags: ['glance', 'service']
+
+- name: ensure glance-registry service started
+  service: name=openstack-glance-registry state=started enabled=true
+
+
+  tags: ['glance', 'service']
+
+- name: restart glance-api service when configuration changed
+  service: name=openstack-glance-api state=restarted
+  tags: ['glance', 'service']
+  when: glance_api_config.changed or glance_cache_config.changed
+
+- name: restart glance-registry service when configuration changed
+  service: name=openstack-glance-registry state=restarted
+  tags: ['glance', 'service']
+  when: glance_register_config.changed

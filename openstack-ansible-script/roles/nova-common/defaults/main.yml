@@ -1,0 +1,4 @@
+---
+nova_mysql_password: nova_at_openstack
+nova_admin_password: nova_at_keystone
+nova_datadir: /var/lib/nova/instances

@@ -1,0 +1,4 @@
+---
+cinder_mysql_password: cinder_at_openstack
+cinder_admin_password: cinder_at_keystone
+cinder_datadir: /var/lib/cinder

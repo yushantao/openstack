@@ -1,0 +1,61 @@
+---
+# - name: install bridge configuration
+#   template: src=ifcfg-br-ex.tmpl dest=/etc/sysconfig/network-scripts/ifcfg-br-ex mode=0644 owner=root group=root
+#   tags: ['nova', 'config']
+
+# - name: start bridge br-ex
+#   command: ifup br-ex
+#   tags: ['nova', 'config']
+
+###############################################################################
+# Service configuration
+# XXX: 修一下 controller 和 compute 是一个机器的时候 nova-api 和
+# nova-metadata-api 端口冲突的问题
+###############################################################################
+
+- name: ensure nova depend service started
+  service: name={{ item }} state=started enabled=yes
+  with_items:
+    - messagebus
+    - libvirtd
+  tags: ['nova', 'service']
+
+- name: ensure nova service started
+  service: name={{ item }} state=started enabled=yes
+  with_items:
+    - openstack-nova-compute
+    - openstack-nova-network
+    - openstack-nova-metadata-api
+  tags: ['nova', 'service']
+  ignore_errors: true
+
+- name: restart nova service when configuration changed
+  service: name={{ item }} state=restarted
+  with_items:
+    - openstack-nova-compute
+    - openstack-nova-network
+    - openstack-nova-metadata-api
+  tags: ['nova', 'service']
+  when: nova_config.changed
+  ignore_errors: true
+
+- name: up vlan interface
+  lineinfile: dest=/etc/sysconfig/network-scripts/ifcfg-{{ openstack_vlan_interface }} line="ONBOOT=yes" regexp="ONBOOT=.*"
+  tags: ['nova', 'config']
+
+- stat: path=/sys/module/bridge 
+  register: bridge_module
+- sysctl: name={{ item }} value=0 state=present
+  when: bridge_module.stat.exists == True
+  with_items:
+    - net.bridge.bridge-nf-call-arptables
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
+- sysctl: name={{ item }} state=absent
+  when: bridge_module.stat.exists != True
+  with_items:
+    - net.bridge.bridge-nf-call-arptables
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
+  ignore_errors: True
+

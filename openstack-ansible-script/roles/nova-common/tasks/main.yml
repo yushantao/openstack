@@ -1,0 +1,25 @@
+---
+- name: install nova package
+  yum: name=openstack-nova enablerepo=openstack-{{ openstack_codename }},epel
+  tags: ['nova', 'rpm']
+
+- name: make nova datadir
+  file: dest={{ nova_datadir }} state=directory mode=755 owner=nova group=nova
+  tags: ['nova', 'config']
+
+- name: make nova instance directory
+  file: dest={{ nova_datadir }}/instances state=directory mode=755 owner=nova group=nova
+  tags: ['nova', 'config']
+
+- name: install nova.conf
+  template: src=nova.conf.tmpl dest=/etc/nova/nova.conf mode=0640 owner=root group=nova
+  tags: ['nova', 'config']
+  register: nova_config
+
+- name: install policy.json
+  file: dest=/etc/nova/policy.json mode=0640 owner=root group=nova
+  tags: ['nova', 'config']
+
+- name: start nova compute service
+  service: name=openstack-nova-compute state=started enabled=yes
+  tags: ['nova', 'nova-compute', 'service']

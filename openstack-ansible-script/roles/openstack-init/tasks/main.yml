@@ -1,0 +1,8 @@
+---
+
+- name: download cirros image
+  get_url: url=http://cdn.download.cirros-cloud.net/0.3.2/cirros-0.3.2-x86_64-disk.img dest=/tmp/cirros-0.3.2-x86_64-disk.img mode=640
+  tags: ['postinst']
+
+- name: import cirros image
+  glance: name=cirros file=/tmp/cirros-0.3.2-x86_64-disk.img disk_format=qcow2 is_public=true user=admin tenant=admin password={{ keystone_admin_password }} region={{ openstack_region }} auth_url=http://{{ openstack_auth_host }}:5000/v2.0 timeout=3600

@@ -1,0 +1,14 @@
+---
+- hosts: "{{ target }}"
+  tasks:
+    - name: ensure iptables service stopped
+      service: name=iptables state=stopped enabled=no
+
+    - name: ensure ebtables service stopped
+      service: name=ebtables state=stopped enabled=no
+
+    - name: ensure brdige-nf rules disabled
+      lineinfile: dest=/etc/rc.local line="sysctl -p"
+
+    - name: reload sysctl
+      command: sysctl -p

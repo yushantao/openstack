@@ -1,0 +1,64 @@
+---
+- name: install package
+  yum: name=openstack-keystone enablerepo=openstack-{{ openstack_codename }}
+  tags: ['keystone', 'rpm']
+
+- name: install keystone.conf
+  template: src=keystone.conf.tmpl dest=/etc/keystone/keystone.conf mode=0640 owner=root group=keystone
+  tags: ['keystone', 'config']
+  register: keystone_config
+
+- name: install keystonerc
+  template: src=keystonerc.tmpl dest=/etc/keystone/keystonerc mode=0640 owner=root group=keystone
+  tags: ['keystone', 'config']
+  register: keystone_config
+
+- name: create database
+  mysql_db: state=present name=keystone login_user=root login_password={{ mysql_root_password }}
+  tags: ['keystone', 'db']
+
+- name: setup database user
+  mysql_user: state=present name=keystone host='%' priv='keystone.*:ALL' password={{ keystone_mysql_password }} login_user=root login_password={{ mysql_root_password }}
+  tags: ['keystone', 'db']
+
+- name: init database
+  command: keystone-manage db_sync
+  sudo: yes
+  sudo_user: keystone
+  tags: ['keystone', 'db']
+
+- name: setup pki database
+  file: dest=/etc/keystone owner=keystone group=keystone mode=755
+  tags: ['keystone', 'cert']
+
+- name: setup pki database
+  command: keystone-manage pki_setup
+  sudo: yes
+  sudo_user: keystone
+  tags: ['keystone', 'cert']
+
+- name: ensure service started
+  service: name=openstack-keystone state=started enabled=true
+  tags: ['keystone', 'service']
+
+- name: keystone service restarted when configuration changed
+  service: name=openstack-keystone state=restarted
+  tags: ['keystone', 'service']
+  when: keystone_config.changed
+
+
+- name: create admin tenant
+  keystone_user: tenant=admin tenant_description="Default Tenant" token={{ keystone_admin_token }} state=present
+
+- name: create services tenant
+  keystone_user: tenant=services tenant_description="Service Tenant" token={{ keystone_admin_token }} state=present
+
+- name: create admin user
+  keystone_user: user=admin tenant=admin password={{ keystone_admin_password }} email="admin@localhost" token={{ keystone_admin_token }} state=present
+
+- name: setup admin user role
+  keystone_user: user=admin tenant=admin role=admin token={{ keystone_admin_token }} state=present
+  tags: ['keystone', 'user']
+
+- name: create keystone service on keystone
+  keystone_service: token={{ keystone_admin_token }} name=keystone type=identity description="Identity Service" public_url="http://{{ openstack_auth_host }}:5000/v2.0" internal_url="http://{{ openstack_auth_host }}:5000/v2.0" admin_url="http://{{ openstack_auth_host }}:35357/v2.0" region="{{ openstack_region }}" state=present

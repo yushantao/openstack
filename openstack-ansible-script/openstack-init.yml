@@ -1,0 +1,4 @@
+- name: initialize openstack cluster for basic use
+  hosts: '{{ target }}'
+  roles:
+    - openstack-init

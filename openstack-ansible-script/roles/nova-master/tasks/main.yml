@@ -1,0 +1,75 @@
+---
+- name: install spice html5
+  yum: name=spice-html5
+  tags: ['nova', 'rpm']
+
+###############################################################################
+# Database configuration
+###############################################################################
+
+- name: create database
+  mysql_db: state=present name=nova login_user=root login_password={{ mysql_root_password }}
+  tags: ['nova', 'db']
+
+- name: create database user
+  mysql_user: state=present name=nova host='%' priv='nova.*:ALL' password={{ nova_mysql_password }} login_user=root login_password={{ mysql_root_password }}
+  tags: ['nova', 'db']
+
+- name: init database
+  command: nova-manage db sync
+  sudo: yes
+  sudo_user: nova
+  tags: ['nova', 'db']
+
+
+###############################################################################
+# auth configuration
+###############################################################################
+
+- name: create nova user on keystone
+  keystone_user: user=nova tenant=services password={{ nova_admin_password }} email="nova@localhost" token={{ keystone_admin_token }} state=present
+  tags: ['nova', 'keystone', 'user']
+
+- name: setup nova user on keystone
+  keystone_user: user=nova tenant=services role=admin token={{ keystone_admin_token }} state=present
+  tags: ['nova', 'keystone', 'user']
+
+- name: create nova service on keystone
+  keystone_service: token={{ keystone_admin_token }} name=nova type=compute description="Nova Compute Service" public_url="http://{{ openstack_auth_host }}:8774/v2/%(tenant_id)s" internal_url="http://{{ openstack_auth_host }}:8774/v2/%(tenant_id)s" admin_url="http://{{ openstack_auth_host }}:8774/v2/%(tenant_id)s" region="{{ openstack_region }}" state=present
+  tags: ['nova', 'keystone', 'user']
+
+- name: create ec2 service on keystone
+  keystone_service: token={{ keystone_admin_token }} name=nova_ec2 type=ec2 description="Nova EC2 Service" public_url="http://{{ openstack_auth_host }}:8773/services/Cloud" internal_url="http://{{ openstack_auth_host }}:8773/services/Cloud" admin_url="http://{{ openstack_auth_host }}:8773/services/Admin" region="{{ openstack_region }}" state=present
+  tags: ['nova', 'keystone', 'user']
+
+
+###############################################################################
+# Service configuration
+###############################################################################
+
+- name: ensure nova service started
+  service: name={{ item }} state=started enabled=true
+  with_items:
+    - openstack-nova-api
+    - openstack-nova-cert
+    - openstack-nova-conductor
+    - openstack-nova-scheduler
+    - openstack-nova-console
+    - openstack-nova-consoleauth
+    - openstack-nova-novncproxy
+    - openstack-nova-spicehtml5proxy
+  tags: ['nova', 'service']
+
+- name: restart nova service when configuration changed
+  service: name={{ item }} state=restarted
+  with_items:
+    - openstack-nova-api
+    - openstack-nova-cert
+    - openstack-nova-conductor
+    - openstack-nova-scheduler
+    - openstack-nova-console
+    - openstack-nova-consoleauth
+    - openstack-nova-novncproxy
+    - openstack-nova-spicehtml5proxy
+  tags: ['nova', 'service']
+  when: nova_config.changed

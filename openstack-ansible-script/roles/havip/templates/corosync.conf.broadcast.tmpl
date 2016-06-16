@@ -1,0 +1,68 @@
+totem {
+        version: 2
+
+        # Time (in ms) to wait for a token  1
+        token: 1000
+
+        # How many token retransmits before forming a new
+        # configuration
+        token_retransmits_before_loss_const: 5
+
+        # Turn off the virtual synchrony filter
+        vsftype: none
+
+        # Enable encryption  2
+        secauth: off
+
+        # How many threads to use for encryption/decryption
+        threads: 0
+
+        # This specifies the redundant ring protocol, which may be
+        # none, active, or passive.  3
+        {% if corosync_interfaces|length > 1 -%}
+        rrp_mode: active
+        {% endif -%}
+
+        # The following is a two-ring multicast configuration.  4
+        {% for interface in corosync_interfaces -%}
+        {% set address = hostvars[inventory_hostname]['ansible_%s' % interface]['ipv4']['address'] -%}
+        {% set ringnumber = loop.index - 1 -%}
+        {% set mcast_id = loop.index -%}
+        interface {
+                ringnumber: {{ ringnumber }}
+                bindnetaddr: {{ address }}
+                mcastaddr: 239.255.111.{{ loop.index }}
+                mcastport: 5405
+        }
+        {% endfor -%}
+}
+
+amf {
+        mode: disabled
+}
+
+service {
+        # Load the Pacemaker Cluster Resource Manager  5
+        ver:       1
+        name:      pacemaker
+}
+
+aisexec {
+        user:   root
+        group:  root
+}
+
+logging {
+        fileline: off
+        to_stderr: yes
+        to_logfile: no
+        to_syslog: yes
+        syslog_facility: daemon
+        debug: off
+        timestamp: on
+        logger_subsys {
+                subsys: AMF
+                debug: off
+                tags: enter|leave|trace1|trace2|trace3|trace4|trace6
+        }
+}

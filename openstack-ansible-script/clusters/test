@@ -1,0 +1,31 @@
+10.36.99.3
+[controller]
+10.36.99.3
+
+[compute]
+10.36.99.3
+
+[all:vars]
+openstack_region = test
+openstack_mysql_master = 10.36.99.3
+openstack_auth_host = 10.36.99.3
+openstack_glance_host = 10.36.99.3
+openstack_nova_master = 10.36.99.3
+openstack_rabbitmq_master = 10.36.99.3
+mysql_root_password = ops_at_dal
+rabbitmq_admin_password = ops_at_dal
+keystone_admin_token = keystone_at_dal
+keystone_admin_password = dalingops@10up
+
+
+openstack_public_interface = eth0
+openstack_vlan_start = 798 
+openstack_vlan_interface = eth1
+openstack_domain = daling.com
+openstack_horizon_domain = 10.36.99.3
+
+
+glance_datadir = /openstack/glance
+cinder_datadir = /openstack/cinder
+nova_datadir = /openstack/nova
+

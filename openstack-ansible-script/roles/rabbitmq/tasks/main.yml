@@ -1,0 +1,26 @@
+---
+- name: install rabbitmq package
+  yum: name=rabbitmq-server enablerepo=epel
+  tags: ['rabbitmq', 'rpm']
+
+- name: start rabbitmq service
+  service: name=rabbitmq-server state=started enabled=yes
+  tags: ['rabbitmq', 'service']
+
+- name: create openstack rabbitmq user
+  rabbitmq_vhost: name=/openstack state=present
+  tags: ['rabbitmq', 'user']
+
+- name: remove default guest user
+  rabbitmq_user: name=guest state=absent
+  tags: ['rabbitmq', 'user']
+
+- name: create openstack rabbitmq user
+  rabbitmq_user: user=openstack
+                 password={{ rabbitmq_admin_password }}
+                 vhost=/openstack
+                 configure_priv=.*
+                 read_priv=.*
+                 write_priv=.*
+                 state=present
+  tags: ['rabbitmq', 'user']

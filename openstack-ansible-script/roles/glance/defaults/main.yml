@@ -1,0 +1,4 @@
+---
+glance_mysql_password: glance_at_openstack
+glance_admin_password: glance_at_keystone
+glance_datadir: /var/lib/glance/images

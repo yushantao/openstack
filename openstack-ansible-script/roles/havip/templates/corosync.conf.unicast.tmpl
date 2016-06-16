@@ -1,0 +1,61 @@
+totem {
+    version: 2
+
+    # Time (in ms) to wait for a token  1
+    token: 1000
+
+    # How many token retransmits before forming a new
+    # configuration
+    token_retransmits_before_loss_const: 5
+
+    # Turn off the virtual synchrony filter
+    vsftype: none
+
+    # Enable encryption  2
+    secauth: off
+
+    # How many threads to use for encryption/decryption
+    threads: 0
+
+    interface {
+        {% for ip in corosync_members -%}
+        member {
+            memberaddr: {{ ip }}
+        }
+        {% endfor -%}
+        ringnumber: 0
+        bindnetaddr: {{ corosync_bind }}
+        mcastport: 5405
+        ttl: 1
+    }
+    transport: udpu
+}
+
+amf {
+    mode: disabled
+}
+
+service {
+    ver:       1
+    name:      pacemaker
+}
+
+aisexec {
+    user:   root
+    group:  root
+}
+
+logging {
+    fileline: off
+    to_stderr: yes
+    to_logfile: no
+    to_syslog: yes
+    syslog_facility: daemon
+    debug: off
+    timestamp: on
+    logger_subsys {
+        subsys: AMF
+        debug: off
+        tags: enter|leave|trace1|trace2|trace3|trace4|trace6
+    }
+}

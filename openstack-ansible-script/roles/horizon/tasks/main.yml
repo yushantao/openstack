@@ -1,0 +1,34 @@
+---
+- name: install horizon depends
+  yum: name={{ item }} state=present
+  with_items:
+    - httpd
+    - mod_wsgi
+  tags: ['horizon', 'rpm']
+
+- name: install openstack dashboard package
+  yum: name=openstack-dashboard enablerepo=openstack-{{ openstack_codename }} state=present
+  tags: ['horizon', 'rpm']
+
+- name: install openstack dashboard themes
+  yum: name=openstack-dashboard-theme enablerepo=openstack-{{ openstack_codename }} state=present
+  tags: ['horizon', 'rpm']
+
+- name: install local_settings
+  template: src=local_settings.tmpl dest=/etc/openstack-dashboard/local_settings mode=0640 owner=root group=apache
+  tags: ['horizon', 'config']
+  register: horizon_config
+
+- name: install horizon.conf to httpd
+  template: src=horizon.conf.tmpl dest=/etc/httpd/conf.d/horizon.conf mode=0640 owner=root group=apache
+  tags: ['horizon', 'config']
+  register: horizon_config
+
+- name: ensure httpd service started
+  service: name=httpd state=started enabled=yes
+  tags: ['horizon', 'config']
+
+- name: restart httpd service when configuration changed
+  service: name=httpd state=restarted
+  when: horizon_config.changed
+  tags: ['horizon', 'config']

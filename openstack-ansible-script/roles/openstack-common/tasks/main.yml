@@ -1,0 +1,28 @@
+---
+#- name: install RDO repository
+#  yum: name=https://repos.fedorapeople.org/repos/openstack/EOL/openstack-icehouse/rdo-release-icehouse-4.noarch.rpm state=present
+#  tags: ['rdo', 'repo']
+
+- name: Install RDO repository
+  copy: src=rdo-release.repo dest=/etc/yum.repos.d/
+  tags: ['rdo', 'repo']
+
+
+- name: upgrade all packages
+  yum: name=* state=latest
+
+- name: install depends
+  yum: name={{ item }} state=present enablerepo=epel
+  with_items:
+    - ntp
+    - MySQL-python
+
+- name: disable bridge iptables
+  sysctl: name=net.bridge.bridge-nf-call-iptables value=0 state=present sysctl_file=/etc/sysctl.conf
+  ignore_errors: True
+  tags: ['postinst']
+
+- name: disable bridge ip6tables
+  sysctl: name=net.bridge.bridge-nf-call-ip6tables value=0 state=present sysctl_file=/etc/sysctl.conf
+  ignore_errors: True
+  tags: ['postinst']

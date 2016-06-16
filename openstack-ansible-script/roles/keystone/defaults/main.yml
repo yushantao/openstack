@@ -1,0 +1,4 @@
+---
+keystone_mysql_password: keystone_at_openstack
+keystone_admin_token: keystone_admin_token
+keystone_admin_password: keystone_at_openstack

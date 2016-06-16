@@ -1,0 +1,4 @@
+- name: install loadbalancer
+  hosts: '{{ target }}'
+  roles:
+    - havip

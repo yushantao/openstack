@@ -1,0 +1,11 @@
+add vip
+-------
+
+    crm configure primitive VIP3 ocf:IPaddr2 params ip=10.32.8.202 nic=eth0 op monitor interval=10s
+
+
+manage vip
+----------
+
+
+    crm resource  migrate VIP3  <hostname>

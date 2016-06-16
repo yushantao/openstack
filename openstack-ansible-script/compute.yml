@@ -1,0 +1,6 @@
+- name: install openstack compute servers
+  hosts: '{{ target }}'
+  roles:
+    - openstack-common
+    - nova-common
+    - nova-compute

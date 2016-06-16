@@ -1,0 +1,26 @@
+---
+- name: install mysql-server
+  yum: name=mysql-server state=present
+  tags: ['mysql', 'rpm']
+
+- name: install mysql-client
+  yum: name=mysql state=present
+  tags: ['mysql', 'rpm']
+
+- name: install my.cnf
+  template: src=my.cnf.tmpl dest=/etc/my.cnf mode=644
+  tags: ['mysql', 'config']
+  register: mysql_config
+
+- name: start mysql service
+  service: name=mysqld state=started enabled=yes
+  tags: ['mysql', 'service']
+
+- name: restart mysql service when configuration changed
+  service: name=mysqld state=restarted
+  tags: ['mysql', 'service']
+  when: mysql_config.changed
+
+- name: update mysql root password for all root accounts
+  mysql_user: name=root host=localhost password={{ mysql_root_password }} login_user=root login_password=""
+  ignore_errors: yes

@@ -1,0 +1,51 @@
+---
+- name: install ha clustering repo
+  template: dest=/etc/yum.repos.d/ha-clustering.repo src=ha-clustering.repo.tmpl
+  tags: ['havip', 'repo']
+
+- name: install ha tools
+  yum: name={{ item }} state=present
+  with_items:
+    - pacemaker
+    - corosync
+    - crmsh
+    - pssh
+  tags: ['havip', 'rpm']
+
+- name: config corosync
+  template: dest=/etc/corosync/corosync.conf src=corosync.conf.unicast.tmpl
+  register: corosync_config
+  tags: ['havip', 'repo']
+  when: corosync_mode == 'unicast'
+
+- name: config corosync
+  template: dest=/etc/corosync/corosync.conf src=corosync.conf.broadcast.tmpl
+  register: corosync_config
+  tags: ['havip', 'repo']
+  when: corosync_mode == 'broadcast'
+
+- name: start corosync
+  service: name=corosync state=started enabled=yes
+  tags: ['havip', 'service']
+
+#- name: restart corosync when config changed
+#  service: name=corosync state=restarted enabled=yes
+#  tags: ['havip', 'service']
+#  when: corosync_config.changed
+
+- name: start pacemaker
+  service: name=pacemaker state=started enabled=yes
+  tags: ['havip', 'service']
+
+#  Since this is a 2 node cluster only, we wants to disable STONITH.
+#  (Shoot The Other Node In The Head).
+- name: disable STONITH
+  command: crm configure property stonith-enabled=false
+  tags: ['havip', 'config']
+
+# If you in a 2 node cluster stops one of the two nodes, the node which is
+# up fails, because the voting system fails.
+# So disable QUORUM
+- name: enabled no-quorum-policy since we only have two nodes
+  command:  crm configure property no-quorum-policy=ignore
+  tags: ['havip', 'config']

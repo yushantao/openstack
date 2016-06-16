@@ -1,0 +1,13 @@
+- name: install openstack controller servers
+  hosts: '{{ target }}'
+  roles:
+    - openstack-common
+    - mysql
+    - rabbitmq
+    - keystone
+    - glance
+    - cinder
+    - nova-common
+    - nova-master
+    - nova-compute
+    - horizon

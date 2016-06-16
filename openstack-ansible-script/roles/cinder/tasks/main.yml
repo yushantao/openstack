@@ -1,0 +1,88 @@
+---
+- name: install cinder package
+  yum: name=openstack-cinder enablerepo=openstack-{{ openstack_codename }}
+  tags: ['cinder', 'rpm']
+
+- name: install cinder.conf
+  template: src=cinder.conf.tmpl dest=/etc/cinder/cinder.conf mode=0640 owner=root group=cinder
+  tags: ['cinder', 'config']
+  register: cinder_config
+
+- name: install policy.json
+  file: dest=/etc/cinder/policy.json mode=0640 owner=root group=cinder
+  tags: ['cinder', 'config']
+
+- name: make cinder datadir
+  file: dest={{ cinder_datadir }} state=directory mode=755 owner=cinder group=cinder
+  tags: ['cinder', 'config']
+
+
+###############################################################################
+# Database configuration
+###############################################################################
+
+- name: create database
+  mysql_db: state=present name=cinder login_user=root login_password={{ mysql_root_password }}
+  tags: ['cinder', 'db']
+
+- name: create database user
+  mysql_user: state=present name=cinder host='%' priv='cinder.*:ALL' password={{ cinder_mysql_password }} login_user=root login_password={{ mysql_root_password }}
+  tags: ['cinder', 'db']
+
+- name: init database
+  command: cinder-manage db sync
+  sudo: yes
+  sudo_user: cinder
+  tags: ['cinder', 'db']
+
+
+###############################################################################
+# auth configuration
+###############################################################################
+
+- name: create cinder user on keystone
+  keystone_user: user=cinder tenant=services password={{ cinder_admin_password }} email="cinder@localhost" token={{ keystone_admin_token }} state=present
+  tags: ['keystone', 'cinder', 'user']
+
+- name: setup cinder user on keystone
+  keystone_user: user=cinder tenant=services role=admin token={{ keystone_admin_token }} state=present
+  tags: ['keystone', 'cinder', 'user']
+
+- name: create glance service on keystone
+  keystone_service: token={{ keystone_admin_token }} name=cinder type=volume description="Volume Service" public_url="http://{{ openstack_auth_host }}:8776/v1/%(tenant_id)s" internal_url="http://{{ openstack_auth_host }}:8776/v1/%(tenant_id)s" admin_url="http://{{ openstack_auth_host }}:8776/v1/%(tenant_id)s" region="{{ openstack_region }}" state=present
+  tags: ['keystone', 'cinder', 'user']
+
+- name: create glance v2 service on keystone
+  keystone_service: token={{ keystone_admin_token }} name=cinderv2 type=volumev2 description="Volume Service V2" public_url="http://{{ openstack_auth_host }}:8776/v2/%(tenant_id)s" internal_url="http://{{ openstack_auth_host }}:8776/v2/%(tenant_id)s" admin_url="http://{{ openstack_auth_host }}:8776/v2/%(tenant_id)s" region="{{ openstack_region }}" state=present
+  tags: ['keystone', 'cinder', 'user']
+
+###############################################################################
+# Service configuration
+###############################################################################
+
+- name: ensure cinder-api service started
+  service: name=openstack-cinder-api state=started enabled=true
+  tags: ['cinder', 'service']
+
+- name: ensure cinder-scheduler service started
+  service: name=openstack-cinder-scheduler state=started enabled=true
+  tags: ['cinder', 'service']
+
+- name: ensure cinder-volume service started
+  service: name=openstack-cinder-volume state=started enabled=true
+  tags: ['cinder', 'service']
+
+- name: restart cinder-api service when configuration changed
+  service: name=openstack-cinder-api state=restarted
+  tags: ['cinder', 'service']
+  when: cinder_config.changed
+
+- name: restart cinder-scheduler service when configuration changed
+  service: name=openstack-cinder-scheduler state=restarted
+  tags: ['cinder', 'service']
+  when: cinder_config.changed
+
+- name: restart cinder-volume service when configuration changed
+  service: name=openstack-cinder-volume state=restarted
+  tags: ['cinder', 'service']
+  when: cinder_config.changed
